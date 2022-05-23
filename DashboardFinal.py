@@ -1,58 +1,52 @@
+# Libraries importing
 import itertools
 import re
-
 import nltk
 from pymongo import MongoClient
 import plotly.graph_objs as go
 import dash
 from dash import dcc
-import dash.dependencies as dd
-
 from dash import html
 from dash.dependencies import Input, Output
-
-from io import BytesIO
-
 import pandas as pd
-from wordcloud import WordCloud
-import base64
 
-
+# Dash application
 app = dash.Dash()
 
 
-def create_header(some_string):
+def create_header(title):
+    """
+     Create the header of the web page
+    :param title:
+    :return:
+    """
 
     header_style = {
-        'background-color' : '#1B95E0',
-        'padding' : '1.5rem',
+        'background-color': '#1B95E0',
+        'padding': '1.5rem',
         'color': 'white',
         'font-family': 'Verdana, Geneva, sans-serif'
     }
-    header = html.Header(html.H1(children=some_string, style=header_style))
+    header = html.Header(html.H1(children=title, style=header_style))
     return header
 
 
 app.layout = html.Div(children=[
 
-
     html.Div(create_header('Real Time Twitter Users Reflections about Amazon ')),
+
     html.Div([
         html.Div(
             dcc.Graph(
-                id='bar',
-            ), style={'display': 'inline-block','vertical-align': 'top',  'width': '50%'}),
+                id='timeseries_sentiment',
+            ), style={'display': 'inline-block', 'vertical-align': 'top', 'width': '50%'}),
 
         html.Div(
             dcc.Graph(
                 id='donut-sentiment',
-            ), style={'display': 'inline-block','vertical-align': 'top',  'width': '50%'}),
-        # html.Div([
-        #    html.Img(id="image_wc"),
-        # ]),
-]
-, style={'width': '100%', 'display': 'inline-block'}
-            ),
+            ), style={'display': 'inline-block', 'vertical-align': 'top', 'width': '50%'}),
+    ], style={'width': '100%', 'display': 'inline-block'}),
+
     html.Div([
         html.Div(
             dcc.Graph(
@@ -61,8 +55,9 @@ app.layout = html.Div(children=[
 
         html.Div(
             dcc.Graph(
-                id='map',
+                id='map_viz',
             ), style={'display': 'inline-block', 'vertical-align': 'top', 'width': '50%'}),
+
         html.Div(
             dcc.Interval(
                 id='interval-component',
@@ -78,29 +73,10 @@ collection = db.tweet_info
 tweets = pd.DataFrame(list(collection.find()))
 
 
-# Wordcloud function
-
-def plot_wordcloud(data):
-
-    wc = WordCloud(max_words=1000, width=480, height=360,
-                   collocations=False).generate(" ".join(data))
-    return wc.to_image()
-
-
-@app.callback(dd.Output('image_wc', 'src'), [dd.Input('image_wc', 'id')])
-def make_image(b):
-
-    data_pos = tweets[tweets['senti_val'] == '1']['text']
-    img = BytesIO()
-    plot_wordcloud(data=data_pos).save(img, format='PNG')
-    return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
-
-
 # Pie Chart
 @app.callback(Output('donut-sentiment', 'figure'),
               [Input('interval-component', 'n_intervals')])
 def donut_sentiment(n):
-
     # bucket the sentimental scores
     cat_senti = []
     for row in tweets.senti_val:
@@ -112,32 +88,36 @@ def donut_sentiment(n):
             cat_senti.append('Neutral')
     tweets['cat_senti'] = cat_senti
 
-    def cal_percent(senti):
-        count_net = len(tweets[tweets['cat_senti'] == senti])
+    def cal_percent(sentiment_label):
+        """
+        compute the total count of a sentiment label
+        :param sentiment_label:
+        :return: count
+        """
+        count_net = len(tweets[tweets['cat_senti'] == sentiment_label])
         return count_net
-    
-    data = [cal_percent('Positive'),cal_percent('Negative')]
-    #data = [cal_percent('Neutral'),cal_percent('Positive'),cal_percent('Negative')]
 
-    ## Plotting the donut
-    trace1 = {"hole": 0.5, "type": "pie", "labels": ["Positive","Negative"], "values": data,
-             "showlegend": True, "marker.line.width": 10 , "marker.line.color" : 'white', 'marker': {'colors': ['green','red']}}
-    
+    data = [cal_percent('Positive'), cal_percent('Negative')]
+
+    # Plotting the donut
+    trace1 = {"hole": 0.5, "type": "pie", "labels": ["Positive", "Negative"], "values": data,
+              "showlegend": True, "marker.line.width": 10, "marker.line.color": 'white',
+              'marker': {'colors': ['green', 'red']}}
+
     layout = go.Layout(
-        title = "<b>Sentiments analysis percentage</b>",
+        title="<b>Sentiments analysis percentage</b>",
         barmode='group',
         titlefont=dict(size=20))
-    
+
     fig = go.Figure(data=[trace1], layout=layout)
 
     return fig
 
+
 # Map visualization
-
-@app.callback(Output('map', 'figure'),
+@app.callback(Output('map_viz', 'figure'),
               [Input('interval-component', 'n_intervals')])
-def map(n):
-
+def map_viz(n):
 
     # Filter constants for states in US
     STATES = ['Alabama', 'AL', 'Alaska', 'AK', 'American Samoa', 'AS', 'Arizona', 'AZ', 'Arkansas', 'AR', 'California',
@@ -173,7 +153,7 @@ def map(n):
 
     geo_dist['Full State Name'] = geo_dist['State'].apply(lambda x: INV_STATE_DICT[x])
     geo_dist['text'] = geo_dist['Full State Name'] + '<br>' + 'Num: ' + geo_dist['Number'].astype(str)
-    fig= go.Figure(go.Choropleth(
+    fig = go.Figure(go.Choropleth(
         locations=geo_dist['State'],  # Spatial coordinates
         z=geo_dist['Number'].astype(float),  # Data to be color-coded
         locationmode='USA-states',  # set of locations match entries in `locations`
@@ -183,9 +163,8 @@ def map(n):
         geo='geo'
     ))
 
-
     fig.update_layout(
-        geo_scope='usa',title="<b> Distribuation of tweets in USA </b>",
+        geo_scope='usa', title="<b> Distribuation of tweets in USA </b>",
         barmode='group',
         titlefont=dict(size=20)
     )
@@ -193,29 +172,29 @@ def map(n):
     return fig
 
 
-@app.callback(Output('bar', 'figure'),
+@app.callback(Output('timeseries_sentiment', 'figure'),
               [Input('interval-component', 'n_intervals')])
-def bar(n):
-
+def timeseries_sentiment(n):
     tweets['creation_datetime'] = pd.to_datetime(tweets['creation_datetime'])
     '''
     Plot the Line Chart
     '''
     # Clean and transform data to enable time series
-    result = tweets.groupby([pd.Grouper(key='creation_datetime', freq='2s'), 'senti_val']).count().unstack(fill_value=0).stack().reset_index()
+    result = tweets.groupby([pd.Grouper(key='creation_datetime', freq='2s'), 'senti_val']).count().unstack(
+        fill_value=0).stack().reset_index()
 
-    result = result.rename(columns={"_id": "Num of amzon mentions", "creation_datetime":"Time in UTC"})
-    time_series = result["Time in UTC"][result['senti_val']=='0'].reset_index(drop=True)
+    result = result.rename(columns={"_id": "Num of amazon mentions", "creation_datetime": "Time in UTC"})
+    time_series = result["Time in UTC"][result['senti_val'] == '0'].reset_index(drop=True)
 
     tr1 = go.Scatter(x=time_series,
-        y=result["Num of amzon mentions"][result['senti_val']=='0'].reset_index(drop=True),
-        name="Negative",
-        mode='lines+markers', line_color='#DC6457',
-        opacity=0.8)
+                     y=result["Num of amazon mentions"][result['senti_val'] == '0'].reset_index(drop=True),
+                     name="Negative",
+                     mode='lines+markers', line_color='#DC6457',
+                     opacity=0.8)
 
     tr2 = go.Scatter(
         x=time_series,
-        y=result["Num of amzon mentions"][result['senti_val']=='1'].reset_index(drop=True),
+        y=result["Num of amazon mentions"][result['senti_val'] == '1'].reset_index(drop=True),
         name="Positive",
         mode='lines+markers', line_color='#16D565',
         opacity=0.8)
@@ -226,9 +205,7 @@ def bar(n):
         titlefont=dict(size=20)
     )
 
-
     fig = go.Figure(data=[tr1, tr2], layout=layout)
-
 
     return fig
 
@@ -236,7 +213,6 @@ def bar(n):
 @app.callback(Output('most_words', 'figure'),
               [Input('interval-component', 'n_intervals')])
 def most_words(n):
-
     # extract positive hashtag
     positive = tweets[tweets['senti_val'] == '1']
     positive = positive.apply(lambda x: x.astype(str).str.lower())
@@ -253,7 +229,7 @@ def most_words(n):
         x=pos_hash_df['hashtag'],
         y=pos_hash_df['count'],
         name='Top 10 Positive Hashtag',
-        marker=dict(color='#1B95E0')  # set the marker color to gold
+        marker=dict(color='#1B95E0')  # set the marker color
     )
 
     data = [trace1]
@@ -262,7 +238,6 @@ def most_words(n):
         title='<b>10 Top Hashtags</b>',
         barmode='group',
         titlefont=dict(size=20)
-        # 'stack', 'group', 'overlay', 'relative'
     )
 
     fig = go.Figure(data=data, layout=layout)
@@ -271,5 +246,4 @@ def most_words(n):
 
 
 if __name__ == '__main__':
-
     app.run_server()

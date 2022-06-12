@@ -23,11 +23,12 @@ The following steps should be followed in order to run the code:
 ### Machine Preparation
 1. Install docker 
 2. Install requirements.txt
+
 ### Run the Code
 
-1. in the project directory from the cmd line, run: Docker-compose up
-2. in an other shell run: python kafkaTwitterStreaming.py 
-3. in an other shell run: python kafkaMongoConsumer.py
+1. in the project directory from the cmd line, run: docker-compose up kafka mongodb
+2. in an other shell run: docker-compose up producer
+3. in an other shell run: docker-compose up consumer
 4. And finally run: python DashboardFinal.py
 
 The results should be showing on an interactive webpage.

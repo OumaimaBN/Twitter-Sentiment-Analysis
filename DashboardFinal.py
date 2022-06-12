@@ -66,7 +66,7 @@ app.layout = html.Div(children=[
             ))
     ])])
 
-# connect to mongo and store in pandas dataframe
+# connect to mongo1 and store in pandas dataframe
 client = MongoClient("mongodb://localhost:27017")
 db = client.twitter_amz_DB
 collection = db.tweet_info

@@ -1,19 +1,22 @@
 # import necessary modules
 from tweepy import OAuthHandler
+from tweepy import Stream
 from tweepy.streaming import Stream
 from kafka import KafkaProducer
 
 import json
 import pickle
 import re
+
 # nltk
 import nltk
-
-# initializing Lemmatizer and stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 
 nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+# initializing Lemmatizer and stopwords
 lemma = WordNetLemmatizer()
 stop_words = stopwords.words("english")
 
@@ -102,7 +105,7 @@ class TweetListener(Stream):
 with open('f_model.pkl', 'rb') as f:
     (vec, LRm) = pickle.load(f)
 
-producer = KafkaProducer(bootstrap_servers='localhost:9092')
+producer = KafkaProducer(bootstrap_servers='kafka:9092')
 
 # keywords to look for: commas work as or, words in the same phrase work as and
 words = ['Amazon']

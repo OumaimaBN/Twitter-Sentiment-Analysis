@@ -1,28 +1,69 @@
-version : "3"
+version: '3.5'
 
-services :
-   zookeeper:
-     image: wurstmeister/zookeeper
-     container_name :  zookeeper
-     ports:
-       - "2181:2181"
+networks:
+  default:
+    name: kfk
 
-   broker:
-     image: wurstmeister/kafka
-     container_name :  broker
-     ports:
-       - "9092:9092"
-     environment:
-        KAFKA_ADVERTISED_HOST_NAME: localhost
-        KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-        KAFKA_CREATE_TOPICS: "twitterstream:1:1"
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
 
-   mongodb:
-     image: mongo:5.0
-     ports:
-       - 27017:27017
-     volumes:
-        - "./mongo/data:/data/db"
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "twitterstream:1:1"
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_PORT: 9092
+    depends_on:
+      - "zookeeper"
+
+
+  mongodb:
+    image: mongo:5.0
+    ports:
+      - 27017:27017
+    volumes:
+      - "./mongo1/data:/data/db"
+
+
+
+  producer:
+    build: .
+    # volumes:
+    # - .:/app
+    command:
+    - python
+    - kafkaTwitterStreaming.py
+    depends_on:
+      - "kafka"
+
+  consumer:
+    build: .
+    # volumes:
+    # - .:/app
+    command:
+    - python
+    - kafkaMongoConsumer.py
+    depends_on:
+      - "kafka"
+      - "mongodb"
+
+  dash:
+    build: .
+    # volumes:
+    # - .:/app
+    ports:
+      - "8050:8050"
+    command:
+      - python
+      - DashboardFinal.py
+
+
+
+
 
 
 
